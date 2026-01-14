@@ -4,4 +4,6 @@ edge-tts
 moviepy
 instagrapi
 requests
-schedule
+facebook-sdk
+google-api-python-client
+google-auth-oauthlib
