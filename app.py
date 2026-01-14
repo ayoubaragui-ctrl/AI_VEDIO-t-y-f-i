@@ -71,6 +71,8 @@ st.divider()
 if st.button("🔥 إطلاق الوحش العابر للمنصات (Global Pilot)"):
     if not st.session_state['accounts']:
         st.error("لازم تزيد حساب واحد على الأقل!")
+    elif not pexels_key:
+        st.error("Pexels Key ضروري للمونتاج!")
     else:
         bot = HalalSuperBot(gemini_key, pexels_key)
         st.success("✅ تم تفعيل الذكاء السيادي! النظام سيقوم بالنشر على جميع المنصات المرتبطة.")
@@ -105,4 +107,10 @@ if st.button("🔥 إطلاق الوحش العابر للمنصات (Global Pil
                 status_container.write("😴 اكتملت دورة النشر العالمية. سأرتاح لـ 8 ساعات.")
                 await asyncio.sleep(28800) # 8 ساعات
 
-        asyncio.run(run_autonomous_loop())
+        # تعديل تقني لضمان تشغيل asyncio داخل Streamlit
+        try:
+            asyncio.run(run_autonomous_loop())
+        except Exception as e:
+            # معالجة مشكلة Event Loop في حالة إعادة التشغيل
+            loop = asyncio.new_event_loop()
+            loop.run_until_complete(run_autonomous_loop())
