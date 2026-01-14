@@ -2,6 +2,8 @@ import streamlit as st
 import asyncio
 import time
 import pandas as pd
+import json
+import os
 from engine import HalalSuperBot
 
 # إعداد الصفحة لتكون احترافية وعريضة
@@ -23,18 +25,34 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
+# --- نظام التخزين الدائم للحسابات ---
+ACCOUNTS_FILE = "accounts_data.json"
+
+def save_accounts(accounts):
+    with open(ACCOUNTS_FILE, "w") as f:
+        json.dump(accounts, f)
+
+def load_accounts():
+    if os.path.exists(ACCOUNTS_FILE):
+        try:
+            with open(ACCOUNTS_FILE, "r") as f:
+                return json.load(f)
+        except:
+            return []
+    return []
+
 st.title("🚀 لوحة التحكم السيادية | إدارة الحسابات المتعددة")
 st.markdown("---")
 
-# إدارة الحسابات في ذاكرة الجلسة
+# إدارة الحسابات في ذاكرة الجلسة مع التحميل من الملف
 if 'accounts' not in st.session_state:
-    st.session_state['accounts'] = []
+    st.session_state['accounts'] = load_accounts()
 
 # القائمة الجانبية لإعدادات الوصول وإضافة الحسابات
 with st.sidebar:
     st.header("🔑 إعدادات الوصول")
     gemini_key = st.text_input("Gemini API Key", value="AIzaSyCbjx_aXkoZ5vll8WvSNJbsGJfLe6o3xcQ")
-    pexels_key = st.text_input("Pexels API Key", type="password")
+    pexels_key = st.text_input("Pexels API Key (ضروري)", type="password")
     
     st.divider()
     st.header("👤 إضافة حساب جديد")
@@ -50,12 +68,15 @@ with st.sidebar:
             if u and p:
                 new_acc = {"user": u, "pwd": p, "platform": platform, "niche": niche}
                 st.session_state['accounts'].append(new_acc)
+                save_accounts(st.session_state['accounts']) # حفظ التعديل في الملف
                 st.success(f"تمت إضافة {u} بنجاح!")
             else:
                 st.error("عمر البيانات كاملة!")
 
     if st.button("🗑️ مسح جميع الحسابات"):
         st.session_state['accounts'] = []
+        if os.path.exists(ACCOUNTS_FILE):
+            os.remove(ACCOUNTS_FILE) # مسح الملف المخزن
         st.rerun()
 
 # القسم العلوي: إحصائيات الأداء العام (لوحة المعلومات)
