@@ -1,83 +1,112 @@
 import streamlit as st
 import asyncio
 import time
+import pandas as pd
 from engine import HalalSuperBot
 
-st.set_page_config(page_title="Halal AI Bot v2.0 - Universal", layout="wide", page_icon="🌍")
+# إعداد الصفحة لتكون احترافية وعريضة
+st.set_page_config(page_title="Halal AI Bot v2.0 - Dashboard", layout="wide", page_icon="🌍")
 
-# ستايل احترافي مع دعم المنصات
+# ستايل CSS متطور لتحسين المظهر وتنسيق الجداول
 st.markdown("""
     <style>
-    .main { background-color: #f0f2f6; }
-    .stButton>button { width: 100%; border-radius: 5px; height: 3em; background-color: #28a745; color: white; }
-    .stMetric { background-color: white; padding: 15px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+    .main { background-color: #0e1117; color: white; }
+    .stTabs [data-baseweb="tab-list"] { gap: 10px; }
+    .stTabs [data-baseweb="tab"] {
+        background-color: #1e2130; border-radius: 5px 5px 0px 0px; padding: 10px 20px; color: white;
+    }
+    .stMetric { background-color: #161b22; padding: 20px; border-radius: 12px; border: 1px solid #30363d; }
+    .account-card {
+        padding: 15px; border-radius: 10px; border: 1px solid #2ea043; background-color: #0d1117; margin-bottom: 10px;
+    }
+    .stats-header { color: #2ea043; font-weight: bold; font-size: 1.2em; }
     </style>
     """, unsafe_allow_html=True)
 
-st.title("🚀 نظام النشر الآلي العالمي | 4 منصات في نظام واحد")
-st.info("النظام الآن يدعم: Instagram, Facebook, TikTok, YouTube Shorts بنشر ذكي ومتزامن.")
+st.title("🚀 لوحة التحكم السيادية | إدارة الحسابات المتعددة")
+st.markdown("---")
 
 # إدارة الحسابات في ذاكرة الجلسة
 if 'accounts' not in st.session_state:
     st.session_state['accounts'] = []
 
+# القائمة الجانبية لإعدادات الوصول وإضافة الحسابات
 with st.sidebar:
-    st.header("🔑 إعدادات الوصول العامة")
+    st.header("🔑 إعدادات الوصول")
     gemini_key = st.text_input("Gemini API Key", value="AIzaSyCbjx_aXkoZ5vll8WvSNJbsGJfLe6o3xcQ")
-    pexels_key = st.text_input("Pexels API Key (ضروري)", type="password")
+    pexels_key = st.text_input("Pexels API Key", type="password")
     
     st.divider()
-    st.header("👤 ربط الحسابات (4 منصات)")
+    st.header("👤 إضافة حساب جديد")
+    platform = st.selectbox("اختار المنصة", ["Insta", "TikTok", "FB", "YouTube"])
     
-    # استخدام Tabs باش يبانو الخانات منظمين وكلهم متاحين
-    t1, t2, t3, t4 = st.tabs(["Insta", "FB", "TikTok", "YouTube"])
-    
-    with t1:
-        u_insta = st.text_input("Insta User", key="ui")
-        p_insta = st.text_input("Insta Pass", type="password", key="pi")
-        if st.button("➕ ربط Instagram"):
-            if u_insta and p_insta:
-                st.session_state['accounts'].append({"user": u_insta, "pwd": p_insta, "platform": "Instagram", "niche": "مواعظ"})
-                st.success("تم!")
+    # نموذج إدخال ديناميكي حسب المنصة
+    with st.expander("بيانات الدخول", expanded=True):
+        u = st.text_input("اسم المستخدم / ID")
+        p = st.text_input("الكلمة السرية / Token", type="password")
+        niche = st.text_input("نيش المحتوى (Niche)", value="مواعظ إسلامية")
+        
+        if st.button("➕ إضافة الحساب للقائمة"):
+            if u and p:
+                new_acc = {"user": u, "pwd": p, "platform": platform, "niche": niche}
+                st.session_state['accounts'].append(new_acc)
+                st.success(f"تمت إضافة {u} بنجاح!")
+            else:
+                st.error("عمر البيانات كاملة!")
 
-    with t2:
-        u_fb = st.text_input("Page ID", key="ufb")
-        p_fb = st.text_input("Access Token", type="password", key="pfb")
-        if st.button("➕ ربط Facebook"):
-            if u_fb and p_fb:
-                st.session_state['accounts'].append({"user": u_fb, "pwd": p_fb, "platform": "Facebook Reels", "niche": "مواعظ"})
-                st.success("تم!")
+    if st.button("🗑️ مسح جميع الحسابات"):
+        st.session_state['accounts'] = []
+        st.rerun()
 
-    with t3:
-        u_tk = st.text_input("TikTok User", key="utk")
-        p_tk = st.text_input("Session ID", type="password", key="ptk")
-        if st.button("➕ ربط TikTok"):
-            if u_tk and p_tk:
-                st.session_state['accounts'].append({"user": u_tk, "pwd": p_tk, "platform": "TikTok", "niche": "مواعظ"})
-                st.success("تم!")
-
-    with t4:
-        u_yt = st.text_input("Channel Name", key="uyt")
-        p_yt = st.text_input("Auth Data", type="password", key="pyt")
-        if st.button("➕ ربط YouTube"):
-            if u_yt and p_yt:
-                st.session_state['accounts'].append({"user": u_yt, "pwd": p_yt, "platform": "YouTube Shorts", "niche": "مواعظ"})
-                st.success("تم!")
-
-# عرض الحسابات النشطة بتنسيق جديد
-st.subheader("📊 إمبراطورية الحسابات المتصلة")
-if st.session_state['accounts']:
-    cols = st.columns(min(len(st.session_state['accounts']), 4))
-    for idx, acc in enumerate(st.session_state['accounts']):
-        col_idx = idx % 4
-        with cols[col_idx]:
-            st.metric(label=acc['platform'], value=acc['user'], delta="جاهز للنشر")
-else:
-    st.warning("لا توجد حسابات نشطة حالياً.")
+# القسم العلوي: إحصائيات الأداء العام (لوحة المعلومات)
+col1, col2, col3, col4 = st.columns(4)
+with col1:
+    st.metric("إجمالي الحسابات", len(st.session_state['accounts']))
+with col2:
+    st.metric("الحالة التشغيلية", "Active" if st.session_state['accounts'] else "Idle")
+with col3:
+    st.metric("المنصات المدعومة", "4")
+with col4:
+    st.metric("تحديث البيانات", "تلقائي")
 
 st.divider()
 
-# محرك التشغيل الأوتوماتيكي المطور
+# القسم الأوسط: إدارة وتحليل الحسابات المتصلة
+st.subheader("📊 تحليل أداء إمبراطورية الحسابات")
+
+if st.session_state['accounts']:
+    # تجهيز البيانات للعرض في جدول احترافي
+    bot_temp = HalalSuperBot(gemini_key, "temp")
+    stats_list = []
+    
+    for acc in st.session_state['accounts']:
+        # جلب الإحصائيات من المحرك (Engine)
+        stat = bot_temp.get_account_stats(acc['platform'], acc)
+        stats_list.append(stat)
+    
+    df = pd.DataFrame(stats_list)
+    # تجميل الجدول
+    st.table(df)
+
+    # عرض الحسابات كبطاقات تفاعلية
+    st.write("### 🗂️ قائمة الحسابات النشطة")
+    cols = st.columns(3)
+    for idx, acc in enumerate(st.session_state['accounts']):
+        with cols[idx % 3]:
+            st.markdown(f"""
+            <div class="account-card">
+                <span class="stats-header">{acc['platform']}</span><br>
+                <b>User:</b> {acc['user']}<br>
+                <b>Niche:</b> {acc['niche']}<br>
+                <span style="color: #8b949e; font-size: 0.8em;">Status: Ready to Post</span>
+            </div>
+            """, unsafe_allow_html=True)
+else:
+    st.info("قم بإضافة حساباتك من القائمة الجانبية للبدء.")
+
+st.divider()
+
+# محرك التشغيل الأوتوماتيكي
 if st.button("🔥 إطلاق الوحش العابر للمنصات (Global Pilot)"):
     if not st.session_state['accounts']:
         st.error("لازم تزيد حساب واحد على الأقل!")
@@ -90,32 +119,21 @@ if st.button("🔥 إطلاق الوحش العابر للمنصات (Global Pil
         async def run_autonomous_loop():
             status_container = st.empty()
             while True:
-                for acc in st.session_state['accounts']:
-                    status_container.write(f"⏳ جاري تجهيز فيديو لـ {acc['user']} على {acc['platform']}...")
-                    try:
-                        data = await bot.generate_content_ai(acc['niche'])
-                        video_file = await bot.produce_video(data)
-                        
-                        success = False
-                        if acc['platform'] == "Instagram":
-                            success = bot.publish_insta(acc['user'], acc['pwd'], video_file, data)
-                        elif acc['platform'] == "Facebook Reels":
-                            success = bot.publish_facebook(acc['user'], acc['pwd'], video_file, data)
-                        elif acc['platform'] == "TikTok":
-                            success = bot.publish_tiktok(acc['user'], acc['pwd'], video_file, data)
-                        elif acc['platform'] == "YouTube Shorts":
-                            success = bot.publish_youtube(acc['user'], acc['pwd'], video_file, data)
-                        
-                        if success:
-                            st.toast(f"✅ تم النشر على {acc['platform']}!", icon='🚀')
-                    except Exception as e:
-                        st.error(f"❌ مشكل في {acc['platform']}: {e}")
+                status_container.info("🔄 بدأت دورة النشر الشاملة لجميع الحسابات...")
                 
-                status_container.write("😴 سأرتاح لـ 8 ساعات.")
-                await asyncio.sleep(28800)
+                # إرسال قائمة الحسابات كاملة للمحرك
+                try:
+                    # استدعاء الدالة المطورة في Engine التي تدعم القائمة
+                    await bot.start_autonomous_loop(st.session_state['accounts'], st.session_state['accounts'][0]['niche'])
+                except Exception as e:
+                    st.error(f"⚠️ خطأ في المحرك الرئيسي: {e}")
+                    await asyncio.sleep(60)
 
+        # تشغيل الحلقة
         try:
             asyncio.run(run_autonomous_loop())
-        except Exception as e:
-            loop = asyncio.new_event_loop()
-            loop.run_until_complete(run_autonomous_loop())
+        except:
+            # حل لمشكل تداخل حلقات asyncio في Streamlit
+            new_loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(new_loop)
+            new_loop.run_until_complete(run_autonomous_loop())
