@@ -27,32 +27,42 @@ with st.sidebar:
     pexels_key = st.text_input("Pexels API Key (ضروري)", type="password")
     
     st.divider()
-    st.header("👤 ربط حسابات المنصات")
-    platform = st.selectbox("اختر المنصة", ["Instagram", "Facebook Reels", "TikTok", "YouTube Shorts"])
+    st.header("👤 ربط الحسابات (4 منصات)")
     
-    # خانات متغيرة على حساب المنصة
-    user_input = st.text_input("Username / Email / Page ID")
+    # استخدام Tabs باش يبانو الخانات منظمين وكلهم متاحين
+    t1, t2, t3, t4 = st.tabs(["Insta", "FB", "TikTok", "YouTube"])
     
-    if platform == "Facebook Reels":
-        pass_input = st.text_input("Access Token (Page)", type="password", help="حط الـ Token ديال الصفحة هنا")
-    elif platform == "TikTok":
-        pass_input = st.text_input("Session ID", type="password", help="حط الـ Session ID من الكوكيز")
-    else:
-        pass_input = st.text_input("Password", type="password")
-        
-    niche_input = st.text_input("المجال (Niche)", "مواعظ وقصص إسلامية")
-    
-    if st.button("➕ إضافة الحساب للجدولة"):
-        if user_input and pass_input and pexels_key:
-            st.session_state['accounts'].append({
-                "user": user_input, 
-                "pwd": pass_input, 
-                "platform": platform,
-                "niche": niche_input
-            })
-            st.success(f"تم تسجيل {user_input} في {platform}!")
-        else:
-            st.error("عمر كاع الخانات عفاك!")
+    with t1:
+        u_insta = st.text_input("Insta User", key="ui")
+        p_insta = st.text_input("Insta Pass", type="password", key="pi")
+        if st.button("➕ ربط Instagram"):
+            if u_insta and p_insta:
+                st.session_state['accounts'].append({"user": u_insta, "pwd": p_insta, "platform": "Instagram", "niche": "مواعظ"})
+                st.success("تم!")
+
+    with t2:
+        u_fb = st.text_input("Page ID", key="ufb")
+        p_fb = st.text_input("Access Token", type="password", key="pfb")
+        if st.button("➕ ربط Facebook"):
+            if u_fb and p_fb:
+                st.session_state['accounts'].append({"user": u_fb, "pwd": p_fb, "platform": "Facebook Reels", "niche": "مواعظ"})
+                st.success("تم!")
+
+    with t3:
+        u_tk = st.text_input("TikTok User", key="utk")
+        p_tk = st.text_input("Session ID", type="password", key="ptk")
+        if st.button("➕ ربط TikTok"):
+            if u_tk and p_tk:
+                st.session_state['accounts'].append({"user": u_tk, "pwd": p_tk, "platform": "TikTok", "niche": "مواعظ"})
+                st.success("تم!")
+
+    with t4:
+        u_yt = st.text_input("Channel Name", key="uyt")
+        p_yt = st.text_input("Auth Data", type="password", key="pyt")
+        if st.button("➕ ربط YouTube"):
+            if u_yt and p_yt:
+                st.session_state['accounts'].append({"user": u_yt, "pwd": p_yt, "platform": "YouTube Shorts", "niche": "مواعظ"})
+                st.success("تم!")
 
 # عرض الحسابات النشطة بتنسيق جديد
 st.subheader("📊 إمبراطورية الحسابات المتصلة")
@@ -63,7 +73,7 @@ if st.session_state['accounts']:
         with cols[col_idx]:
             st.metric(label=acc['platform'], value=acc['user'], delta="جاهز للنشر")
 else:
-    st.warning("لا توجد حسابات نشطة حالياً. أضف حساباً من القائمة الجانبية لبدء العمل.")
+    st.warning("لا توجد حسابات نشطة حالياً.")
 
 st.divider()
 
@@ -75,20 +85,17 @@ if st.button("🔥 إطلاق الوحش العابر للمنصات (Global Pil
         st.error("Pexels Key ضروري للمونتاج!")
     else:
         bot = HalalSuperBot(gemini_key, pexels_key)
-        st.success("✅ تم تفعيل الذكاء السيادي! النظام سيقوم بالنشر على جميع المنصات المرتبطة.")
+        st.success("✅ تم تفعيل الذكاء السيادي!")
         
         async def run_autonomous_loop():
             status_container = st.empty()
             while True:
                 for acc in st.session_state['accounts']:
-                    status_container.write(f"⏳ جاري تجهيز فيديو مخصص لـ {acc['user']} على {acc['platform']}...")
+                    status_container.write(f"⏳ جاري تجهيز فيديو لـ {acc['user']} على {acc['platform']}...")
                     try:
-                        # 1. صنع المحتوى (Gemini)
                         data = await bot.generate_content_ai(acc['niche'])
-                        # 2. المونتاج (MoviePy)
                         video_file = await bot.produce_video(data)
                         
-                        # 3. النشر الذكي حسب المنصة
                         success = False
                         if acc['platform'] == "Instagram":
                             success = bot.publish_insta(acc['user'], acc['pwd'], video_file, data)
@@ -100,17 +107,15 @@ if st.button("🔥 إطلاق الوحش العابر للمنصات (Global Pil
                             success = bot.publish_youtube(acc['user'], acc['pwd'], video_file, data)
                         
                         if success:
-                            st.toast(f"✅ تم النشر بنجاح على {acc['platform']} ({acc['user']})!", icon='🚀')
+                            st.toast(f"✅ تم النشر على {acc['platform']}!", icon='🚀')
                     except Exception as e:
-                        st.error(f"❌ وقع مشكل في منصة {acc['platform']} ({acc['user']}): {e}")
+                        st.error(f"❌ مشكل في {acc['platform']}: {e}")
                 
-                status_container.write("😴 اكتملت دورة النشر العالمية. سأرتاح لـ 8 ساعات.")
-                await asyncio.sleep(28800) # 8 ساعات
+                status_container.write("😴 سأرتاح لـ 8 ساعات.")
+                await asyncio.sleep(28800)
 
-        # تعديل تقني لضمان تشغيل asyncio داخل Streamlit
         try:
             asyncio.run(run_autonomous_loop())
         except Exception as e:
-            # معالجة مشكلة Event Loop في حالة إعادة التشغيل
             loop = asyncio.new_event_loop()
             loop.run_until_complete(run_autonomous_loop())
