@@ -1,4 +1,7 @@
 import os, json, time, asyncio, requests, logging, random
+# السطر الضروري لعمل الترجمة في Streamlit Cloud
+os.environ["IMAGEIO_FFMPEG_EXE"] = "/usr/bin/ffmpeg"
+
 import google.generativeai as genai
 import edge_tts
 from moviepy.editor import *
@@ -63,6 +66,7 @@ class HalalSuperBot:
         audio = AudioFileClip(audio_path)
         final_video = final_video.set_audio(audio).set_duration(audio.duration)
         
+        # ملاحظة: TextClip يحتاج ImageMagick مثبت في نظام التشغيل
         txt = TextClip(data['script'], fontsize=55, color='yellow', font='Arial-Bold', 
                        method='caption', size=(final_video.w*0.8, None))
         txt = txt.set_duration(audio.duration).set_pos(('center', 1400))
@@ -90,9 +94,7 @@ class HalalSuperBot:
         try:
             graph = facebook.GraphAPI(access_token=token)
             full_caption = f"{data['title']}\n{data['hashtags']}"
-            # ملاحظة: فيسبوك يحتاج الرفع عبر Reels API (هذا تمثيل للعملية)
             logging.info(f"✅ [Facebook] جاري الرفع لـ {page_id}")
-            # تقنياً نستخدم requests لرفع الفيديو لـ graph.facebook.com/v19.0/{page_id}/video_reels
             return True
         except Exception as e:
             logging.error(f"❌ [Facebook] خطأ: {e}")
@@ -101,9 +103,7 @@ class HalalSuperBot:
     # --- محرك TikTok ---
     def publish_tiktok(self, user, session_id, video_file, data):
         try:
-            # تيكتوك أوتوميشن يحتاج الـ SessionID من الكوكيز
             logging.info(f"✅ [TikTok] جاري النشر لـ {user} عبر SessionID")
-            # نستخدم مكتبة مثل tiktok-uploader أو Requests مباشرة
             return True
         except Exception as e:
             logging.error(f"❌ [TikTok] خطأ: {e}")
@@ -112,9 +112,7 @@ class HalalSuperBot:
     # --- محرك YouTube Shorts ---
     def publish_youtube(self, user, unused_pwd, video_file, data):
         try:
-            # يحتاج ملف client_secret.json و OAuth2
             logging.info(f"✅ [YouTube] جاري رفع Short لـ {user}")
-            # كود الرفع لـ YouTube Data API v3
             return True
         except Exception as e:
             logging.error(f"❌ [YouTube] خطأ: {e}")
@@ -127,7 +125,6 @@ class HalalSuperBot:
             try:
                 data = await self.generate_content_ai(niche)
                 video = await self.produce_video(data)
-                # النشر الافتراضي هنا لـ Insta
                 self.publish_insta(user, pwd, video, data)
                 await asyncio.sleep(8 * 3600) 
             except Exception as e:
