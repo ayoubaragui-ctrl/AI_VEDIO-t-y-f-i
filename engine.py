@@ -10,6 +10,7 @@ from instagrapi import Client
 # ملاحظة: مكتبات YouTube و FB تحتاج لإعداد API Console (Client Secrets)
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
+from datetime import datetime
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - [SUPREME_COMMAND] - %(message)s')
 
@@ -20,6 +21,19 @@ class HalalSuperBot:
         self.pexels_key = pexels_key
         self.temp_dir = "empire_assets"
         if not os.path.exists(self.temp_dir): os.makedirs(self.temp_dir)
+
+    def get_account_stats(self, platform, acc):
+        """جلب إحصائيات تقريبية للحساب"""
+        try:
+            # هنا مستقبلاً نقدروا نزيدو جلب حقيقي من API
+            return {
+                "Platform": platform,
+                "User": acc.get('user', 'Unknown'),
+                "Status": "✅ Active",
+                "Last Sync": datetime.now().strftime("%H:%M")
+            }
+        except:
+            return {"Platform": platform, "User": "Error", "Status": "❌ Offline"}
 
     async def generate_content_ai(self, niche):
         """ذكاء المحتوى والردود الاستباقية"""
