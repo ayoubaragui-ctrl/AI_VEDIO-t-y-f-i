@@ -8,6 +8,12 @@ from datetime import datetime
 import google.generativeai as genai
 from engine import HalalSuperBot
 
+# --- إعدادات نظام المونتاج (ImageMagick) للسيرفر ---
+from moviepy.config import change_settings
+if os.name != 'nt':
+    change_settings({"IMAGEMAGICK_BINARY": "/usr/bin/convert"})
+# -----------------------------------------------
+
 # إعداد الصفحة لتكون احترافية وعريضة
 st.set_page_config(page_title="The Sovereign AI Bot v3.0", layout="wide", page_icon="🔱")
 
