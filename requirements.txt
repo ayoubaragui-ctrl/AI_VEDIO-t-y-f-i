@@ -1,8 +1,8 @@
 streamlit
 google-generativeai
 edge-tts
-moviepy
+moviepy==1.0.3
 instagrapi
-tiktok-uploader
 requests
 pandas
+pillow
