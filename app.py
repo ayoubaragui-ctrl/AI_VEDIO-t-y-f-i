@@ -4,6 +4,7 @@ import time
 import pandas as pd
 import json
 import os
+from datetime import datetime
 from engine import HalalSuperBot
 
 # إعداد الصفحة لتكون احترافية وعريضة
@@ -66,10 +67,11 @@ with st.sidebar:
         
         if st.button("➕ إضافة الحساب للقائمة"):
             if u and p:
-                new_acc = {"user": u, "pwd": p, "platform": platform, "niche": niche}
+                # التعديل: استعملنا needs_test باش نضمنوا النشر الفوري لأي حساب مضاف
+                new_acc = {"user": u, "pwd": p, "platform": platform, "niche": niche, "is_new": True, "needs_test": True}
                 st.session_state['accounts'].append(new_acc)
                 save_accounts(st.session_state['accounts']) # حفظ التعديل في الملف
-                st.success(f"تمت إضافة {u} بنجاح!")
+                st.success(f"تمت إضافة {u} بنجاح! سيتم نشر فيديو التجربة فوراً عند التشغيل.")
             else:
                 st.error("عمر البيانات كاملة!")
 
@@ -106,7 +108,6 @@ if st.session_state['accounts']:
         stats_list.append(stat)
     
     df = pd.DataFrame(stats_list)
-    # تجميل الجدول
     st.table(df)
 
     # عرض الحسابات كبطاقات تفاعلية
@@ -127,7 +128,7 @@ else:
 
 st.divider()
 
-# محرك التشغيل الأوتوماتيكي
+# --- محرك التشغيل الأوتوماتيكي المطور ذو الجدولة الذكية ---
 if st.button("🔥 إطلاق الوحش العابر للمنصات (Global Pilot)"):
     if not st.session_state['accounts']:
         st.error("لازم تزيد حساب واحد على الأقل!")
@@ -137,24 +138,43 @@ if st.button("🔥 إطلاق الوحش العابر للمنصات (Global Pil
         bot = HalalSuperBot(gemini_key, pexels_key)
         st.success("✅ تم تفعيل الذكاء السيادي!")
         
-        async def run_autonomous_loop():
+        async def run_smart_scheduler():
             status_container = st.empty()
+            
+            # تعديل: عند أول تشغيل، كاع الحسابات اللي في القائمة خاصهم يلوحو فيديو التجربة
+            for i, acc in enumerate(st.session_state['accounts']):
+                if acc.get('needs_test', True) or acc.get('is_new', False):
+                    status_container.warning(f"🚀 فحص فوري: جاري نشر فيديو التجربة لحساب {acc['user']} ({acc['platform']})...")
+                    await bot.post_immediately(acc)
+                    st.session_state['accounts'][i]['is_new'] = False
+                    st.session_state['accounts'][i]['needs_test'] = False
+                    save_accounts(st.session_state['accounts'])
+                    status_container.success(f"✅ فيديو التجربة نشر بنجاح! الحساب {acc['user']} الآن تحت نظام الجدولة.")
+                    await asyncio.sleep(2)
+
             while True:
-                status_container.info("🔄 بدأت دورة النشر الشاملة لجميع الحسابات...")
+                current_hour = datetime.now().hour
                 
-                # إرسال قائمة الحسابات كاملة للمحرك
-                try:
-                    # استدعاء الدالة المطورة في Engine التي تدعم القائمة
-                    await bot.start_autonomous_loop(st.session_state['accounts'], st.session_state['accounts'][0]['niche'])
-                except Exception as e:
-                    st.error(f"⚠️ خطأ في المحرك الرئيسي: {e}")
-                    await asyncio.sleep(60)
+                for i, acc in enumerate(st.session_state['accounts']):
+                    # منطق الجدولة حسب خوارزمية كل منصة (3 فيديوهات يومياً)
+                    target_hours = {
+                        "TikTok": [12, 19, 22],
+                        "YouTube": [10, 18, 21],
+                        "Insta": [13, 20, 23],
+                        "FB": [9, 17, 21]
+                    }
+                    
+                    if current_hour in target_hours.get(acc['platform'], [12, 18, 22]):
+                        status_container.info(f"⏰ وقت الذروة لـ {acc['platform']}: جاري نشر محتوى النيش {acc['niche']}...")
+                        await bot.process_account(acc) # النشر المبرمج
+                
+                status_container.info(f"💤 الوحش في حالة مراقبة... (الساعة الآن: {current_hour}:00)")
+                await asyncio.sleep(3600) # فحص كل ساعة
 
         # تشغيل الحلقة
         try:
-            asyncio.run(run_autonomous_loop())
+            asyncio.run(run_smart_scheduler())
         except:
-            # حل لمشكل تداخل حلقات asyncio في Streamlit
             new_loop = asyncio.new_event_loop()
             asyncio.set_event_loop(new_loop)
-            new_loop.run_until_complete(run_autonomous_loop())
+            new_loop.run_until_complete(run_smart_scheduler())
