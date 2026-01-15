@@ -10,6 +10,14 @@ from engine import HalalSuperBot
 # إعداد الصفحة لتكون احترافية وعريضة
 st.set_page_config(page_title="Halal AI Bot v2.0 - Dashboard", layout="wide", page_icon="🌍")
 
+# جلب السوارت بأمان من Streamlit Secrets (التعديل المطلوب للأمان)
+try:
+    gemini_key = st.secrets["GEMINI_KEY"]
+    pexels_key = st.secrets["PEXELS_KEY"]
+except Exception as e:
+    st.error("⚠️ خطأ: لازم تزيد GEMINI_KEY و PEXELS_KEY في Streamlit Secrets (Settings > Secrets)!")
+    st.stop()
+
 # ستايل CSS متطور لتحسين المظهر وتنسيق الجداول
 st.markdown("""
     <style>
@@ -44,18 +52,14 @@ def load_accounts():
 
 st.title("🚀 لوحة التحكم السيادية | إدارة الحسابات المتعددة")
 st.markdown("---")
+st.info("🔐 وضع الأمان مفعل: يتم جلب مفاتيح API أوتوماتيكياً من السيرفر.")
 
 # إدارة الحسابات في ذاكرة الجلسة مع التحميل من الملف
 if 'accounts' not in st.session_state:
     st.session_state['accounts'] = load_accounts()
 
-# القائمة الجانبية لإعدادات الوصول وإضافة الحسابات
+# القائمة الجانبية لإدارة الحسابات فقط (تم حذف خانات Keys)
 with st.sidebar:
-    st.header("🔑 إعدادات الوصول")
-    gemini_key = st.text_input("Gemini API Key", value="AIzaSyCbjx_aXkoZ5vll8WvSNJbsGJfLe6o3xcQ")
-    pexels_key = st.text_input("Pexels API Key (ضروري)", type="password")
-    
-    st.divider()
     st.header("👤 إضافة حساب جديد")
     platform = st.selectbox("اختار المنصة", ["Insta", "TikTok", "FB", "YouTube"])
     
@@ -67,21 +71,21 @@ with st.sidebar:
         
         if st.button("➕ إضافة الحساب للقائمة"):
             if u and p:
-                # التعديل: استعملنا needs_test باش نضمنوا النشر الفوري لأي حساب مضاف
+                # إضافة علامة 'needs_test' لضمان النشر الفوري لأي حساب مضاف
                 new_acc = {"user": u, "pwd": p, "platform": platform, "niche": niche, "is_new": True, "needs_test": True}
                 st.session_state['accounts'].append(new_acc)
-                save_accounts(st.session_state['accounts']) # حفظ التعديل في الملف
-                st.success(f"تمت إضافة {u} بنجاح! سيتم نشر فيديو التجربة فوراً عند التشغيل.")
+                save_accounts(st.session_state['accounts']) 
+                st.success(f"تمت إضافة {u} بنجاح! سيتم نشر فيديو التجربة فوراً عند الإطلاق.")
             else:
                 st.error("عمر البيانات كاملة!")
 
     if st.button("🗑️ مسح جميع الحسابات"):
         st.session_state['accounts'] = []
         if os.path.exists(ACCOUNTS_FILE):
-            os.remove(ACCOUNTS_FILE) # مسح الملف المخزن
+            os.remove(ACCOUNTS_FILE) 
         st.rerun()
 
-# القسم العلوي: إحصائيات الأداء العام (لوحة المعلومات)
+# القسم العلوي: إحصائيات الأداء العام
 col1, col2, col3, col4 = st.columns(4)
 with col1:
     st.metric("إجمالي الحسابات", len(st.session_state['accounts']))
@@ -98,19 +102,16 @@ st.divider()
 st.subheader("📊 تحليل أداء إمبراطورية الحسابات")
 
 if st.session_state['accounts']:
-    # تجهيز البيانات للعرض في جدول احترافي
     bot_temp = HalalSuperBot(gemini_key, "temp")
     stats_list = []
     
     for acc in st.session_state['accounts']:
-        # جلب الإحصائيات من المحرك (Engine)
         stat = bot_temp.get_account_stats(acc['platform'], acc)
         stats_list.append(stat)
     
     df = pd.DataFrame(stats_list)
     st.table(df)
 
-    # عرض الحسابات كبطاقات تفاعلية
     st.write("### 🗂️ قائمة الحسابات النشطة")
     cols = st.columns(3)
     for idx, acc in enumerate(st.session_state['accounts']):
@@ -132,8 +133,6 @@ st.divider()
 if st.button("🔥 إطلاق الوحش العابر للمنصات (Global Pilot)"):
     if not st.session_state['accounts']:
         st.error("لازم تزيد حساب واحد على الأقل!")
-    elif not pexels_key:
-        st.error("Pexels Key ضروري للمونتاج!")
     else:
         bot = HalalSuperBot(gemini_key, pexels_key)
         st.success("✅ تم تفعيل الذكاء السيادي!")
@@ -141,7 +140,7 @@ if st.button("🔥 إطلاق الوحش العابر للمنصات (Global Pil
         async def run_smart_scheduler():
             status_container = st.empty()
             
-            # تعديل: عند أول تشغيل، كاع الحسابات اللي في القائمة خاصهم يلوحو فيديو التجربة
+            # النشر الفوري للتجربة لأي حساب يحتاج فحص
             for i, acc in enumerate(st.session_state['accounts']):
                 if acc.get('needs_test', True) or acc.get('is_new', False):
                     status_container.warning(f"🚀 فحص فوري: جاري نشر فيديو التجربة لحساب {acc['user']} ({acc['platform']})...")
@@ -149,14 +148,13 @@ if st.button("🔥 إطلاق الوحش العابر للمنصات (Global Pil
                     st.session_state['accounts'][i]['is_new'] = False
                     st.session_state['accounts'][i]['needs_test'] = False
                     save_accounts(st.session_state['accounts'])
-                    status_container.success(f"✅ فيديو التجربة نشر بنجاح! الحساب {acc['user']} الآن تحت نظام الجدولة.")
+                    status_container.success(f"✅ فيديو التجربة نشر بنجاح لحساب {acc['user']}!")
                     await asyncio.sleep(2)
 
             while True:
                 current_hour = datetime.now().hour
                 
                 for i, acc in enumerate(st.session_state['accounts']):
-                    # منطق الجدولة حسب خوارزمية كل منصة (3 فيديوهات يومياً)
                     target_hours = {
                         "TikTok": [12, 19, 22],
                         "YouTube": [10, 18, 21],
@@ -166,12 +164,11 @@ if st.button("🔥 إطلاق الوحش العابر للمنصات (Global Pil
                     
                     if current_hour in target_hours.get(acc['platform'], [12, 18, 22]):
                         status_container.info(f"⏰ وقت الذروة لـ {acc['platform']}: جاري نشر محتوى النيش {acc['niche']}...")
-                        await bot.process_account(acc) # النشر المبرمج
+                        await bot.process_account(acc) 
                 
                 status_container.info(f"💤 الوحش في حالة مراقبة... (الساعة الآن: {current_hour}:00)")
-                await asyncio.sleep(3600) # فحص كل ساعة
+                await asyncio.sleep(3600) 
 
-        # تشغيل الحلقة
         try:
             asyncio.run(run_smart_scheduler())
         except:
