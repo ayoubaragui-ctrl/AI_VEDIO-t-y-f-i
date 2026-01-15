@@ -4,7 +4,8 @@ os.environ["IMAGEIO_FFMPEG_EXE"] = "/usr/bin/ffmpeg"
 import google.generativeai as genai
 import edge_tts
 from moviepy.editor import *
-from moviepy.video.fx.all import resize, lum_contrast, mirror_x, speedx, colorx, gamma_correction
+# السطر المعدل لضمان التوافق مع السيرفر
+import moviepy.video.fx.all as vfx
 from instagrapi import Client
 # ملاحظة: مكتبات YouTube و FB تحتاج لإعداد API Console (Client Secrets)
 from googleapiclient.discovery import build
@@ -60,8 +61,9 @@ class HalalSuperBot:
                     if not os.path.exists(v_tmp):
                         with open(v_tmp, "wb") as f: f.write(requests.get(v_url).content)
                     
-                    c = VideoFileClip(v_tmp).without_audio().resize(height=1920).fx(speedx, 1.03).fx(gamma_correction, 1.1)
-                    if random.choice([True, False]): c = c.fx(mirror_x)
+                    # تعديل طريقة استدعاء التأثيرات لضمان العمل (vfx)
+                    c = VideoFileClip(v_tmp).without_audio().resize(height=1920).fx(vfx.speedx, 1.03)
+                    if random.choice([True, False]): c = c.fx(vfx.mirror_x)
                     clips.append(c.subclip(2, 5))
 
             final_v = concatenate_videoclips(clips, method="compose").set_audio(audio).set_duration(audio.duration)
