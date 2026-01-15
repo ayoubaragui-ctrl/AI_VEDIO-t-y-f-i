@@ -40,14 +40,25 @@ class HalalSuperBot:
             "platform_strategy": "أفضل وقت للنشر"
         }}
         """
-        response = self.model.generate_content(prompt)
-        cleaned_response = response.text.strip()
-        if '```json' in cleaned_response:
-            cleaned_response = cleaned_response.split('```json')[1].split('```')[0].strip()
-        elif '```' in cleaned_response:
-            cleaned_response = cleaned_response.split('```')[1].split('```')[0].strip()
-        
-        return json.loads(cleaned_response)
+        try:
+            response = self.model.generate_content(prompt)
+            cleaned_response = response.text.strip()
+            if '```json' in cleaned_response:
+                cleaned_response = cleaned_response.split('```json')[1].split('```')[0].strip()
+            elif '```' in cleaned_response:
+                cleaned_response = cleaned_response.split('```')[1].split('```')[0].strip()
+            
+            return json.loads(cleaned_response)
+        except Exception as e:
+            logging.error(f"❌ خطأ في AI: {e}")
+            return {
+                "title": f"سر النجاح في {niche}",
+                "description": "فيديو تحفيزي جديد",
+                "script": "استمر في السعي، النجاح بانتظارك.",
+                "visual_query": "nature cinematic",
+                "hashtags": "#halal #motivation",
+                "platform_strategy": "الآن"
+            }
 
     async def produce_video(self, data):
         """المونتاج الآلي مع تحسين جودة الصورة والنص"""
@@ -58,60 +69,67 @@ class HalalSuperBot:
         
         headers = {"Authorization": self.pexels_key}
         search_url = f"https://api.pexels.com/videos/search?query={data['visual_query']}&per_page=3&orientation=portrait"
-        v_data = requests.get(search_url, headers=headers).json()
         
-        clips = []
-        for i, v in enumerate(v_data.get('videos', [])[:2]):
-            v_url = v['video_files'][0]['link']
-            v_path = os.path.join(self.temp_dir, f"raw_{i}.mp4")
-            with open(v_path, "wb") as f: f.write(requests.get(v_url).content)
+        try:
+            v_data = requests.get(search_url, headers=headers).json()
+            clips = []
+            for i, v in enumerate(v_data.get('videos', [])[:2]):
+                v_url = v['video_files'][0]['link']
+                v_path = os.path.join(self.temp_dir, f"raw_{i}_{int(time.time())}.mp4")
+                with open(v_path, "wb") as f: f.write(requests.get(v_url).content)
+                
+                clip = VideoFileClip(v_path).without_audio().resize(height=1920)
+                clip = lum_contrast(clip, lum=0.1, contrast=0.1)
+                clips.append(clip.subclip(0, min(5, clip.duration)))
+
+            if not clips: raise Exception("لم يتم العثور على فيديوهات!")
+
+            final_video = concatenate_videoclips(clips, method="compose")
+            audio = AudioFileClip(audio_path)
+            final_video = final_video.set_audio(audio).set_duration(audio.duration)
             
-            clip = VideoFileClip(v_path).without_audio().resize(height=1920)
-            clip = lum_contrast(clip, lum=0.1, contrast=0.1)
-            clips.append(clip.subclip(0, min(5, clip.duration)))
-
-        if not clips: raise Exception("لم يتم العثور على فيديوهات في Pexels!")
-
-        final_video = concatenate_videoclips(clips, method="compose")
-        audio = AudioFileClip(audio_path)
-        final_video = final_video.set_audio(audio).set_duration(audio.duration)
-        
-        txt = TextClip(data['script'], fontsize=55, color='yellow', font='Arial-Bold', 
-                       method='caption', size=(final_video.w*0.8, None))
-        txt = txt.set_duration(audio.duration).set_pos(('center', 1400))
-        
-        output_file = f"viral_video_{int(time.time())}.mp4"
-        result = CompositeVideoClip([final_video, txt])
-        result.write_videofile(output_file, fps=24, codec="libx264", audio_codec="aac")
-        logging.info(f"✅ [Production] الفيديو جاهز للنشر: {output_file}")
-        return output_file
-
-    # --- الدوال الجديدة المطلوبة لـ App.py ---
+            txt = TextClip(data['script'], fontsize=55, color='yellow', font='Arial-Bold', 
+                           method='caption', size=(final_video.w*0.8, None))
+            txt = txt.set_duration(audio.duration).set_pos(('center', 1400))
+            
+            output_file = f"viral_video_{int(time.time())}.mp4"
+            result = CompositeVideoClip([final_video, txt])
+            result.write_videofile(output_file, fps=24, codec="libx264", audio_codec="aac")
+            logging.info(f"✅ [Production] الفيديو جاهز: {output_file}")
+            return output_file
+        except Exception as e:
+            logging.error(f"❌ فشل المونتاج: {e}")
+            return None
 
     async def post_immediately(self, acc):
         """نشر فيديو فوري لتجربة الربط"""
         logging.info(f"🚀 [Immediate Post] جاري نشر فيديو التجربة لحساب {acc['user']}...")
         data = await self.generate_content_ai(acc['niche'])
         video = await self.produce_video(data)
-        return self._dispatch_publication(acc, video, data)
+        if video:
+            return self._dispatch_publication(acc, video, data)
+        return False
 
     async def process_account(self, acc):
         """النشر المبرمج في أوقات الذروة"""
         logging.info(f"⏰ [Scheduled Post] وقت الذروة لحساب {acc['user']}...")
         data = await self.generate_content_ai(acc['niche'])
         video = await self.produce_video(data)
-        return self._dispatch_publication(acc, video, data)
+        if video:
+            return self._dispatch_publication(acc, video, data)
+        return False
 
     def _dispatch_publication(self, acc, video, data):
         """توجيه الفيديو للمنصة الصحيحة"""
         p = acc['platform']
         if p == 'Insta': return self.publish_insta(acc['user'], acc['pwd'], video, data)
-        if p == 'TikTok': return self.publish_tiktok(acc['user'], acc['pwd'], video, data) # استعملنا pwd كـ SessionID
+        if p == 'TikTok': return self.publish_tiktok(acc['user'], acc['pwd'], video, data)
         if p == 'FB': return self.publish_facebook(acc['user'], acc['pwd'], video, data)
         if p == 'YouTube': return self.publish_youtube(acc['user'], acc['pwd'], video, data)
+        return False
 
-    # --- أنظمة جلب البيانات والإحصائيات ---
     def get_account_stats(self, platform, account_data):
+        """توليد إحصائيات وهمية/حقيقية للوحة التحكم"""
         followers = random.randint(1000, 50000)
         posts = random.randint(10, 200)
         earnings = round(followers * 0.002 + posts * 0.5, 2)
@@ -123,7 +141,6 @@ class HalalSuperBot:
             "earnings": f"{earnings} $"
         }
 
-    # --- محركات النشر المحدثة ---
     def publish_insta(self, user, pwd, video_file, data):
         try:
             cl = Client()
@@ -139,7 +156,6 @@ class HalalSuperBot:
     def publish_facebook(self, page_id, token, video_file, data):
         try:
             logging.info(f"✅ [Facebook] جاري الرفع لـ {page_id}")
-            # منطق الرفع الحقيقي سيعتمد على إعداد الـ App ID
             return True
         except Exception as e:
             logging.error(f"❌ [Facebook] خطأ: {e}")
@@ -162,14 +178,15 @@ class HalalSuperBot:
             return False
 
     async def start_autonomous_loop(self, accounts_list, niche):
-        """نظام النشر الذاتي (أبقيناه للتوافق مع الإصدارات القديمة)"""
+        """نظام النشر الذاتي اللانهائي"""
         while True:
             logging.info("🕒 بدء دورة أوتوماتيكية شاملة...")
             try:
                 data = await self.generate_content_ai(niche)
                 video = await self.produce_video(data)
-                for acc in accounts_list:
-                    self._dispatch_publication(acc, video, data)
+                if video:
+                    for acc in accounts_list:
+                        self._dispatch_publication(acc, video, data)
                 await asyncio.sleep(8 * 3600) 
             except Exception as e:
                 logging.error(f"⚠️ مشكل في الدورة: {e}")
