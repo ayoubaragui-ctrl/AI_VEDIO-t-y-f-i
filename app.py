@@ -5,174 +5,137 @@ import pandas as pd
 import json
 import os
 from datetime import datetime
+import google.generativeai as genai
 from engine import HalalSuperBot
 
 # إعداد الصفحة لتكون احترافية وعريضة
-st.set_page_config(page_title="Halal AI Bot v2.0 - Dashboard", layout="wide", page_icon="🌍")
+st.set_page_config(page_title="The Sovereign AI Bot v3.0", layout="wide", page_icon="🔱")
 
-# جلب السوارت بأمان من Streamlit Secrets
+# جلب السوارت بأمان
 try:
     gemini_key = st.secrets["GEMINI_KEY"]
     pexels_key = st.secrets["PEXELS_KEY"]
+    genai.configure(api_key=gemini_key)
+    chat_model = genai.GenerativeModel('gemini-1.5-flash')
 except Exception as e:
-    st.error("⚠️ خطأ: لازم تزيد GEMINI_KEY و PEXELS_KEY في Streamlit Secrets (Settings > Secrets)!")
+    st.error("⚠️ خطأ في المفاتيح! تأكد من إعداد Secrets.")
     st.stop()
 
-# ستايل CSS متطور
+# ستايل CSS إمبراطوري
 st.markdown("""
     <style>
-    .main { background-color: #0e1117; color: white; }
-    .stTabs [data-baseweb="tab-list"] { gap: 10px; }
-    .stTabs [data-baseweb="tab"] {
-        background-color: #1e2130; border-radius: 5px 5px 0px 0px; padding: 10px 20px; color: white;
-    }
-    .stMetric { background-color: #161b22; padding: 20px; border-radius: 12px; border: 1px solid #30363d; }
-    .account-card {
-        padding: 15px; border-radius: 10px; border: 1px solid #2ea043; background-color: #0d1117; margin-bottom: 10px;
-    }
-    .stats-header { color: #2ea043; font-weight: bold; font-size: 1.2em; }
+    .stApp { background-color: #05070a; color: #e0e0e0; }
+    .chat-box { background: #111418; border-left: 5px solid #2ea043; padding: 20px; border-radius: 10px; margin: 10px 0; }
+    .status-online { color: #2ea043; font-weight: bold; animation: blinker 1.5s linear infinite; }
+    @keyframes blinker { 50% { opacity: 0; } }
+    .stMetric { background-color: #0d1117; border: 1px solid #30363d; border-radius: 15px; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- نظام التخزين الدائم للحسابات ---
+# --- نظام التخزين ---
 ACCOUNTS_FILE = "accounts_data.json"
-
 def save_accounts(accounts):
-    with open(ACCOUNTS_FILE, "w") as f:
-        json.dump(accounts, f)
-
+    with open(ACCOUNTS_FILE, "w") as f: json.dump(accounts, f)
 def load_accounts():
     if os.path.exists(ACCOUNTS_FILE):
         try:
-            with open(ACCOUNTS_FILE, "r") as f:
-                return json.load(f)
-        except:
-            return []
+            with open(ACCOUNTS_FILE, "r") as f: return json.load(f)
+        except: return []
     return []
 
-st.title("🚀 لوحة التحكم السيادية | إدارة الحسابات المتعددة")
-st.markdown("---")
-st.info("🔐 وضع الأمان مفعل: يتم جلب مفاتيح API أوتوماتيكياً من السيرفر.")
-
-# إدارة الحسابات في ذاكرة الجلسة
 if 'accounts' not in st.session_state:
     st.session_state['accounts'] = load_accounts()
 
-# القائمة الجانبية
-with st.sidebar:
-    st.header("👤 إضافة حساب جديد")
-    platform = st.selectbox("اختار المنصة", ["Insta", "TikTok", "FB", "YouTube"])
+# --- واجهة المستخدم ---
+st.title("🦾 مركز القيادة الإمبراطوري | التحكم السيادي")
+st.markdown(f"**الحالة:** <span class='status-online'>● متصل بالسيرفر العالمي</span>", unsafe_allow_html=True)
+
+# تقسيم الصفحة إلى قسمين (التحكم و الشات)
+col_left, col_right = st.columns([0.6, 0.4])
+
+with col_left:
+    st.subheader("📊 إحصائيات الإمبراطورية")
+    c1, c2, c3 = st.columns(3)
+    c1.metric("إجمالي الحسابات", len(st.session_state['accounts']))
+    c2.metric("الحالة", "الوحش جاهز" if st.session_state['accounts'] else "في انتظار الأوامر")
+    c3.metric("قوة المعالجة", "100%")
+
+    st.divider()
     
-    with st.expander("بيانات الدخول", expanded=True):
-        u = st.text_input("اسم المستخدم / ID")
-        p = st.text_input("الكلمة السرية / Token (SessionID for TikTok)", type="password")
-        niche = st.text_input("نيش المحتوى (Niche)", value="مواعظ إسلامية")
-        
-        if st.button("➕ إضافة الحساب للقائمة"):
-            if u and p:
-                new_acc = {"user": u, "pwd": p, "platform": platform, "niche": niche, "is_new": True, "needs_test": True}
-                st.session_state['accounts'].append(new_acc)
-                save_accounts(st.session_state['accounts']) 
-                st.success(f"تمت إضافة {u} بنجاح!")
-            else:
-                st.error("عمر البيانات كاملة!")
-
-    if st.button("🗑️ مسح جميع الحسابات"):
-        st.session_state['accounts'] = []
-        if os.path.exists(ACCOUNTS_FILE):
-            os.remove(ACCOUNTS_FILE) 
-        st.rerun()
-
-# الإحصائيات
-col1, col2, col3, col4 = st.columns(4)
-with col1:
-    st.metric("إجمالي الحسابات", len(st.session_state['accounts']))
-with col2:
-    st.metric("الحالة التشغيلية", "Active" if st.session_state['accounts'] else "Idle")
-with col3:
-    st.metric("المنصات المدعومة", "4")
-with col4:
-    st.metric("تحديث البيانات", "تلقائي")
-
-st.divider()
-
-# تحليل الأداء
-st.subheader("📊 تحليل أداء إمبراطورية الحسابات")
-
-if st.session_state['accounts']:
-    bot_temp = HalalSuperBot(gemini_key, pexels_key) # استعملنا pexels_key الحقيقي
-    stats_list = []
-    
-    for acc in st.session_state['accounts']:
-        stat = bot_temp.get_account_stats(acc['platform'], acc)
-        stats_list.append(stat)
-    
-    df = pd.DataFrame(stats_list)
-    st.table(df)
-
-    st.write("### 🗂️ قائمة الحسابات النشطة")
-    cols = st.columns(3)
-    for idx, acc in enumerate(st.session_state['accounts']):
-        with cols[idx % 3]:
-            st.markdown(f"""
-            <div class="account-card">
-                <span class="stats-header">{acc['platform']}</span><br>
-                <b>User:</b> {acc['user']}<br>
-                <b>Niche:</b> {acc['niche']}<br>
-                <span style="color: #8b949e; font-size: 0.8em;">Status: Ready to Post</span>
-            </div>
-            """, unsafe_allow_html=True)
-else:
-    st.info("قم بإضافة حساباتك من القائمة الجانبية للبدء.")
-
-st.divider()
-
-# --- محرك التشغيل الأوتوماتيكي ---
-if st.button("🔥 إطلاق الوحش العابر للمنصات (Global Pilot)"):
-    if not st.session_state['accounts']:
-        st.error("لازم تزيد حساب واحد على الأقل!")
+    # إدارة الحسابات
+    if st.session_state['accounts']:
+        bot_temp = HalalSuperBot(gemini_key, pexels_key)
+        stats = [bot_temp.get_account_stats(acc['platform'], acc) for acc in st.session_state['accounts']]
+        st.dataframe(pd.DataFrame(stats), use_container_width=True)
     else:
+        st.info("لا توجد حسابات نشطة حالياً.")
+
+    if st.button("🔥 إطلاق الوحش العابر للمنصات (Global Pilot)"):
         bot = HalalSuperBot(gemini_key, pexels_key)
-        st.toast("🚀 جاري إيقاظ الوحش...")
+        st.toast("🚀 جاري تفعيل البروتوكولات السيادية...")
         
         async def run_smart_scheduler():
             status_container = st.empty()
-            
-            # النشر الفوري للتجربة
-            for i, acc in enumerate(st.session_state['accounts']):
-                if acc.get('needs_test', True):
-                    status_container.warning(f"🚀 فحص فوري: جاري نشر فيديو التجربة لـ {acc['user']}...")
-                    success = await bot.post_immediately(acc)
-                    if success:
+            while True:
+                current_hour = datetime.now().hour
+                for i, acc in enumerate(st.session_state['accounts']):
+                    status_container.info(f"⌛ مراقبة الحساب: {acc['user']} ({acc['platform']})")
+                    # النشر الفوري للتجربة أو الجدولة
+                    if acc.get('needs_test', True):
+                        await bot.post_immediately(acc)
                         st.session_state['accounts'][i]['needs_test'] = False
                         save_accounts(st.session_state['accounts'])
-                        st.toast(f"✅ فيديو التجربة نشر بنجاح لـ {acc['user']}!")
-                    await asyncio.sleep(2)
-
-            while True:
-                current_time = datetime.now()
-                current_hour = current_time.hour
+                        st.toast(f"✅ تم نشر فيديو التجربة لـ {acc['user']}")
                 
-                for i, acc in enumerate(st.session_state['accounts']):
-                    target_hours = {
-                        "TikTok": [12, 19, 22],
-                        "YouTube": [10, 18, 21],
-                        "Insta": [13, 20, 23],
-                        "FB": [9, 17, 21]
-                    }
-                    
-                    if current_hour in target_hours.get(acc['platform'], [12, 18, 22]):
-                        status_container.info(f"⏰ وقت الذروة لـ {acc['platform']}: جاري النشر...")
-                        await bot.process_account(acc)
-                        st.toast(f"🎬 تم نشر فيديو جديد على {acc['platform']}")
-                
-                status_container.info(f"💤 الوحش في حالة مراقبة... (الوقت الآن: {current_time.strftime('%H:%M')})")
-                await asyncio.sleep(3600) 
+                status_container.info(f"💤 الوحش يراقب الساعة الآن: {current_hour}:00")
+                await asyncio.sleep(3600)
 
-        # تشغيل المحرك بأمان
-        try:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            loop.run_until_complete(run_smart_scheduler())
-        except Exception as e:
-            st.error(f"⚠️ حدث خطأ في المحرك: {e}")
+        asyncio.run(run_smart_scheduler())
+
+with col_right:
+    st.subheader("💬 مستشارك الخاص (AI Empire Chat)")
+    st.markdown("اسألني عن أي شيء يخص الحسابات، الاستراتيجيات، أو ماذا يفعل الوحش الآن.")
+    
+    if "messages" not in st.session_state:
+        st.session_state.messages = []
+
+    # عرض المحادثة
+    for message in st.session_state.messages:
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
+
+    if prompt := st.chat_input("تكلم مع الوحش..."):
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        with st.chat_message("user"):
+            st.markdown(prompt)
+
+        with st.chat_message("assistant"):
+            # نظام الرد الذكي: يعرف معلومات حساباتك ويحللها
+            context = f"أنت العقل المدبر لنظام HalalSuperBot. الحسابات الحالية هي: {st.session_state['accounts']}. أجب بلهجة قوية واحترافية."
+            full_prompt = f"{context}\nUser: {prompt}"
+            
+            response = chat_model.generate_content(full_prompt)
+            st.markdown(response.text)
+            st.session_state.messages.append({"role": "assistant", "content": response.text})
+
+# القائمة الجانبية (إضافة الحسابات)
+with st.sidebar:
+    st.header("👤 إضافة حساب إمبراطوري")
+    p_form = st.selectbox("المنصة", ["Insta", "TikTok", "YouTube", "FB"])
+    u_form = st.text_input("اسم المستخدم")
+    pass_form = st.text_input("SessionID / Password", type="password")
+    niche_form = st.text_input("نيش المحتوى", "مواعظ إسلامية")
+    
+    if st.button("➕ تثبيت الحساب"):
+        if u_form and pass_form:
+            new_acc = {"user": u_form, "pwd": pass_form, "platform": p_form, "niche": niche_form, "needs_test": True}
+            st.session_state['accounts'].append(new_acc)
+            save_accounts(st.session_state['accounts'])
+            st.success("تم التثبيت بنجاح!")
+        else:
+            st.error("أدخل البيانات كاملة!")
+
+    if st.button("🗑️ تصفير النظام"):
+        st.session_state['accounts'] = []
+        if os.path.exists(ACCOUNTS_FILE): os.remove(ACCOUNTS_FILE)
+        st.rerun()
