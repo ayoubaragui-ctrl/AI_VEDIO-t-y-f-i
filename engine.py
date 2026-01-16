@@ -1,10 +1,15 @@
 import os, json, time, asyncio, requests, logging, random, re, uuid
 from datetime import datetime
+import PIL.Image
+
+# تصحيح مشكل PIL لضمان اشتغال MoviePy
+if not hasattr(PIL.Image, 'ANTIALIAS'):
+    PIL.Image.ANTIALIAS = PIL.Image.LANCZOS
 
 # إعداد المسارات
 os.environ["IMAGEIO_FFMPEG_EXE"] = "/usr/bin/ffmpeg"
 
-from groq import Groq # مكتبة Groq الصاروخية
+from groq import Groq
 import edge_tts
 from moviepy.editor import *
 import moviepy.video.fx.all as vfx
@@ -73,7 +78,6 @@ class HalalSuperBot:
                 Format:
                 {{"script": "text content", "queries": ["nature", "sky"], "music_keywords": ["calm"], "hashtags": "#wisdom"}}
                 """
-                # استخدام موديل Llama 3.3 70B
                 completion = self.client.chat.completions.create(
                     model="llama-3.3-70b-versatile",
                     messages=[{"role": "user", "content": prompt}],
@@ -91,7 +95,7 @@ class HalalSuperBot:
         return {"script": "إن مع العسر يسرا، فوض أمرك لله واطمئن.", "queries": ["nature"], "music_keywords": ["calm"], "hashtags": "#islam"}
 
     async def produce_video(self, data):
-        """محرك المونتاج الاحترافي 100%"""
+        """محرك المونتاج الاحترافي معدل ليعمل على جميع السيرفرات"""
         try:
             # 1. الصوت
             audio_path = os.path.join(self.temp_dir, f"v_{uuid.uuid4().hex[:6]}.mp3")
@@ -127,7 +131,7 @@ class HalalSuperBot:
 
             video_base = concatenate_videoclips(clips, method="compose").set_duration(duration)
             
-            # 4. الكتابة الديناميكية
+            # 4. الكتابة الديناميكية (تعديل method لتفادي أخطاء السياسة الأمنية)
             words = data['script'].split()
             chunk_size = 3
             chunks = [" ".join(words[i:i+chunk_size]) for i in range(0, len(words), chunk_size)]
@@ -135,7 +139,8 @@ class HalalSuperBot:
             part_dur = duration / max(1, len(chunks))
             
             for i, part in enumerate(chunks):
-                txt = TextClip(part, fontsize=85, color='yellow', font='FreeSans-Bold', stroke_color='black', stroke_width=2.5, method='caption', size=(950, None))
+                # استبدال 'caption' بـ 'label' لحل مشكل ImageMagick فالسيرفرات
+                txt = TextClip(part, fontsize=85, color='yellow', font='FreeSans-Bold', stroke_color='black', stroke_width=2.5, method='label', size=(950, None))
                 txt = txt.set_start(i*part_dur).set_duration(part_dur).set_position(('center', 1400)).crossfadein(0.2)
                 text_clips.append(txt)
 
