@@ -15,12 +15,14 @@ if os.name != 'nt':
 # إعداد الصفحة
 st.set_page_config(page_title="The Sovereign AI Bot v3.0 - Groq Edition", layout="wide", page_icon="📖")
 
-# جلب المفاتيح (تم تعويض Gemini بـ Groq)
+# --- جلب المفاتيح بأمان من Streamlit Secrets ---
 try:
-    groq_key = "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"
-    pexels_key = "EiiGg62yz3U5VeK6KB9zUYUfcqqtBJ85dOdTwvRkyz6IZkFtlWe3HfUS"
+    # هنا حيدنا السوارت من وسط الكود
+    groq_key = st.secrets["GROQ_KEY"]
+    pexels_key = st.secrets["PEXELS_KEY"]
 except Exception as e:
-    st.error(f"⚠️ خطأ في تحميل المفاتيح: {e}")
+    st.error("⚠️ خطأ: المفاتيح غير موجودة في إعدادات Secrets الخاصة بـ Streamlit")
+    st.info("تأكد من إضافة GROQ_KEY و PEXELS_KEY في لوحة تحكم Streamlit.")
     st.stop()
 
 # ستايل CSS فخم
@@ -84,7 +86,6 @@ with col_left:
     
     if st.session_state['accounts']:
         st.write("📋 الحسابات النشطة:")
-        # تعريف البوت باستعمال Groq
         bot_temp = HalalSuperBot(groq_key, pexels_key)
         stats = []
         for acc in st.session_state['accounts']:
@@ -96,7 +97,6 @@ with col_left:
         st.info("لا توجد حسابات. أضف حساباً من القائمة الجانبية للبدء.")
 
     if st.button("🔥 إطلاق الوحش (Start Production)"):
-        # تشغيل البوت بمفتاح Groq
         bot = HalalSuperBot(groq_key, pexels_key)
         
         async def run_smart_scheduler():
@@ -113,7 +113,6 @@ with col_left:
                 for acc in st.session_state['accounts']:
                     status_container.info(f"⌛ جاري العمل لـ: {acc['user']} ({acc['niche']})")
                     try:
-                        # المونتاج والنشر التلقائي
                         result = await bot.post_immediately(acc)
                         if result:
                             msg = f"[{datetime.now().strftime('%H:%M')}] ✅ تم بنجاح: {acc['user']}"
@@ -124,10 +123,10 @@ with col_left:
                         logs.append(f"<div class='log-error'>❌ خطأ تقني: {str(err)}</div>")
                     
                     log_placeholder.markdown(f"<div class='log-container'>{''.join(logs[::-1])}</div>", unsafe_allow_html=True)
-                    await asyncio.sleep(30) # انتظار بين الحسابات لتفادي الضغط
+                    await asyncio.sleep(30)
                 
                 status_container.success("💤 الدورة اكتملت. سأعود للعمل تلقائياً بعد 6 ساعات.")
-                await asyncio.sleep(21600) # الانتظار 6 ساعات بالضبط
+                await asyncio.sleep(21600) 
 
         asyncio.run(run_smart_scheduler())
 
