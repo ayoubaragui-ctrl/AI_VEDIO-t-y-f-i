@@ -1,6 +1,8 @@
 import os, json, time, asyncio, requests, logging, random, re, uuid
 from datetime import datetime
 import PIL.Image
+import numpy as np # إضافة ضرورية لتحويل الصور
+from PIL import Image, ImageDraw, ImageFont # محرك الرسم البديل
 
 # تصحيح مشكل PIL لضمان اشتغال MoviePy
 if not hasattr(PIL.Image, 'ANTIALIAS'):
@@ -131,7 +133,7 @@ class HalalSuperBot:
 
             video_base = concatenate_videoclips(clips, method="compose").set_duration(duration)
             
-            # 4. الكتابة الديناميكية (تعديل method لتفادي أخطاء السياسة الأمنية)
+            # 4. الكتابة الديناميكية (إصلاح شامل لمشكل ImageMagick باستعمال Pillow)
             words = data['script'].split()
             chunk_size = 3
             chunks = [" ".join(words[i:i+chunk_size]) for i in range(0, len(words), chunk_size)]
@@ -139,9 +141,21 @@ class HalalSuperBot:
             part_dur = duration / max(1, len(chunks))
             
             for i, part in enumerate(chunks):
-                # استبدال 'caption' بـ 'label' لحل مشكل ImageMagick فالسيرفرات
-                txt = TextClip(part, fontsize=85, color='yellow', font='FreeSans-Bold', stroke_color='black', stroke_width=2.5, method='label', size=(950, None))
-                txt = txt.set_start(i*part_dur).set_duration(part_dur).set_position(('center', 1400)).crossfadein(0.2)
+                # صياغة النص كصورة لتجاوز الحماية
+                img = Image.new('RGBA', (1080, 1920), (0, 0, 0, 0))
+                draw = ImageDraw.Draw(img)
+                try:
+                    font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 80)
+                except:
+                    font = ImageFont.load_default()
+                
+                # رسم خلفية النص والنص نفسه
+                bbox = draw.textbbox((540, 1400), part, font=font, anchor="mm")
+                draw.rectangle([bbox[0]-20, bbox[1]-10, bbox[2]+20, bbox[3]+10], fill=(0,0,0,160))
+                draw.text((540, 1400), part, font=font, fill="yellow", anchor="mm")
+                
+                # تحويل الصورة لـ Clip
+                txt = ImageClip(np.array(img)).set_start(i*part_dur).set_duration(part_dur).set_position('center')
                 text_clips.append(txt)
 
             overlay = ColorClip(size=(1080, 1920), color=(0,0,0), duration=duration).set_opacity(0.3)
