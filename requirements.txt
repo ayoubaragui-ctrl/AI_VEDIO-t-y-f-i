@@ -7,3 +7,6 @@ requests
 pandas
 pillow
 google-api-python-client
+tiktok-uploader
+imageio==2.25.1
+imageio-ffmpeg
