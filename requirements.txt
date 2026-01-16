@@ -1,12 +1,9 @@
 streamlit
-google-generativeai
+groq
 edge-tts
 moviepy==1.0.3
-instagrapi
 requests
 pandas
 pillow
-google-api-python-client
-tiktok-uploader
 imageio==2.25.1
 imageio-ffmpeg
